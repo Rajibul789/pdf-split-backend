@@ -31,26 +31,32 @@ app.post("/split", upload.single("pdf"), (req, res) => {
   }
 
   const inputPath = req.file.path;
-  const outputDir = `output_${Date.now()}`;
-  fs.mkdirSync(outputDir);
+  const jobId = Date.now().toString();
+  const outputDir = path.join(__dirname, "files", jobId);
 
-  const cmd = `gs -sDEVICE=pdfwrite -dSAFER -dBATCH -dNOPAUSE -sOutputFile=${outputDir}/page_%03d.pdf ${inputPath}`;
+  fs.mkdirSync(outputDir, { recursive: true });
 
-  exec(cmd, (err) => {
-    if (err) {
-      return res.status(500).json({ error: "Ghostscript failed" });
+  const cmd = `/usr/bin/gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile=${outputDir}/page_%03d.pdf ${inputPath}`;
+
+  exec(cmd, (error, stdout, stderr) => {
+    if (error) {
+      console.error("GS ERROR:", stderr || error.message);
+      return res.status(500).json({
+        error: "Ghostscript failed",
+        details: stderr || error.message
+      });
     }
 
     const files = fs.readdirSync(outputDir).map(file => ({
       name: file,
-      url: `/files/${outputDir}/${file}`
+      url: `/files/${jobId}/${file}`
     }));
 
     res.json(files);
   });
 });
 
-app.use("/files", express.static(__dirname));
+app.use("/files", express.static(path.join(__dirname, "files")));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server running on port " + PORT));
