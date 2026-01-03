@@ -7,6 +7,24 @@ const path = require("path");
 const app = express();
 const upload = multer({ dest: "uploads/" });
 
+app.get("/check-gs", (req, res) => {
+  const { exec } = require("child_process");
+
+  exec("which gs && gs --version", (err, stdout, stderr) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        error: err.message,
+        stderr
+      });
+    }
+    res.json({
+      success: true,
+      output: stdout
+    });
+  });
+});
+
 app.post("/split", upload.single("pdf"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
