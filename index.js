@@ -6,6 +6,15 @@ const path = require("path");
 
 const app = express();
 
+// ✅ Ensure writable temp folders exist
+if (!fs.existsSync("/tmp/uploads")) {
+  fs.mkdirSync("/tmp/uploads", { recursive: true });
+}
+
+if (!fs.existsSync("/tmp/files")) {
+  fs.mkdirSync("/tmp/files", { recursive: true });
+}
+
 // ✅ Use /tmp for uploads
 const upload = multer({ dest: "/tmp/uploads" });
 
