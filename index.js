@@ -16,7 +16,19 @@ if (!fs.existsSync("/tmp/files")) {
 }
 
 // ✅ Use /tmp for uploads
-const upload = multer({ dest: "/tmp/uploads" });
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "/tmp/uploads");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+});
 
 // ---------------- CHECK GS ----------------
 app.get("/check-gs", (req, res) => {
@@ -31,25 +43,27 @@ app.get("/check-gs", (req, res) => {
 // ---------------- SPLIT PDF ----------------
 app.post("/split", upload.single("pdf"), (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: "No PDF uploaded" });
+    return res.status(400).json({ error: "Upload failed (no file)" });
   }
 
   const inputPath = req.file.path;
   const jobId = Date.now().toString();
+  const outputDir = path.join("/tmp/files", jobId);
 
-  // ✅ Use /tmp for output
-  const outputDir = path.join("/tmp", "files", jobId);
   fs.mkdirSync(outputDir, { recursive: true });
 
   const cmd = `/usr/bin/gs -dSAFER -dBATCH -dNOPAUSE \
-    -sDEVICE=pdfwrite \
-    -sOutputFile=${outputDir}/page_%03d.pdf \
-    ${inputPath}`;
+-sDEVICE=pdfwrite \
+-sOutputFile=${outputDir}/page_%03d.pdf \
+"${inputPath}"`;
 
   exec(cmd, (error, stdout, stderr) => {
     if (error) {
-      console.error("GS ERROR:", stderr);
-      return res.status(500).json({ error: "Ghostscript failed", details: stderr });
+      console.error("GS ERROR:", stderr || error.message);
+      return res.status(500).json({
+        error: "Ghostscript failed",
+        details: stderr || error.message
+      });
     }
 
     const files = fs.readdirSync(outputDir);
