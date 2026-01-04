@@ -1,11 +1,12 @@
 const express = require("express");
 const multer = require("multer");
+const cors = require("cors");          // 👈 ADD THIS LINE
 const { exec } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
 const app = express();
-
+app.use(cors());
 /* -------------------------------------------------
    ENSURE RENDER WRITABLE DIRECTORIES EXIST
 ------------------------------------------------- */
